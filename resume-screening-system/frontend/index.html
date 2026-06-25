@@ -1,0 +1,194 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Resume Screener</title>
+  <link rel="stylesheet" href="/static/css/style.css" />
+</head>
+<body>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────────── -->
+<aside class="sidebar">
+  <div class="brand">
+    <span class="brand-icon">⚡</span>
+    <span class="brand-name">ResumeAI</span>
+  </div>
+
+  <nav class="nav">
+    <a class="nav-item active" onclick="showSection('upload')">
+      <span>📄</span> Upload Resume
+    </a>
+    <a class="nav-item" onclick="showSection('jd')">
+      <span>📋</span> Job Description
+    </a>
+    <a class="nav-item" onclick="showSection('match')">
+      <span>🎯</span> Match & Analyze
+    </a>
+    <a class="nav-item" onclick="showSection('rank')">
+      <span>🏆</span> Rankings
+    </a>
+    <a class="nav-item" onclick="showSection('database')">
+      <span>🗂️</span> All Resumes
+    </a>
+  </nav>
+
+  <div class="sidebar-footer">
+    <label class="theme-toggle">
+      <input type="checkbox" id="themeToggle" onchange="toggleTheme()" />
+      <span>Light mode</span>
+    </label>
+  </div>
+</aside>
+
+<!-- ── Main content ─────────────────────────────────────────────────────────── -->
+<main class="main">
+
+  <!-- Header stats bar -->
+  <div class="topbar">
+    <div class="stat-pill" id="stat-total">📄 0 resumes</div>
+    <div class="stat-pill" id="stat-jd">📋 No JD loaded</div>
+    <div class="stat-pill" id="stat-top">🏆 Best: —</div>
+  </div>
+
+  <!-- ── SECTION: Upload ──────────────────────────────────────────────────── -->
+  <section id="sec-upload" class="section active">
+    <div class="section-header">
+      <h1>Upload Resume</h1>
+      <p>Upload one or more PDF resumes to begin screening.</p>
+    </div>
+
+    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault();this.classList.add('drag')"
+         ondragleave="this.classList.remove('drag')"
+         ondrop="handleDrop(event)">
+      <div class="upload-icon">📤</div>
+      <div class="upload-text">Click or drag & drop PDF resumes here</div>
+      <div class="upload-sub">Supports single or multiple PDFs</div>
+      <input type="file" id="fileInput" accept=".pdf" multiple style="display:none"
+             onchange="handleFileSelect(event)" />
+    </div>
+
+    <div id="uploadQueue" class="upload-queue"></div>
+    <button class="btn btn-primary" id="uploadBtn" onclick="uploadAll()" style="display:none">
+      Upload All Resumes
+    </button>
+
+    <div id="uploadLog" class="log-panel"></div>
+  </section>
+
+  <!-- ── SECTION: Job Description ─────────────────────────────────────────── -->
+  <section id="sec-jd" class="section">
+    <div class="section-header">
+      <h1>Job Description</h1>
+      <p>Paste the job description. All resumes will be matched against this.</p>
+    </div>
+
+    <div class="card">
+      <label class="form-label">Position Title</label>
+      <input type="text" id="jdTitle" class="form-input" placeholder="e.g. Senior NLP Engineer" />
+
+      <label class="form-label" style="margin-top:16px;">Job Description *</label>
+      <textarea id="jdText" class="form-textarea"
+        placeholder="Paste the full job description here...
+
+Example:
+We are looking for a Python Developer with 3+ years of experience.
+Required: Python, FastAPI, PostgreSQL, Docker, REST APIs, Git.
+Nice to have: Machine Learning, TensorFlow, AWS."></textarea>
+
+      <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
+        <button class="btn btn-primary" onclick="saveJD()">Save Job Description</button>
+        <button class="btn btn-ghost" onclick="loadSampleJD()">Load sample JD</button>
+      </div>
+      <div id="jdStatus" class="status-msg"></div>
+    </div>
+  </section>
+
+  <!-- ── SECTION: Match ───────────────────────────────────────────────────── -->
+  <section id="sec-match" class="section">
+    <div class="section-header">
+      <h1>Match & Analyze</h1>
+      <p>Select a resume and run the NLP analysis against your job description.</p>
+    </div>
+
+    <div class="card">
+      <label class="form-label">Select Resume</label>
+      <select id="matchSelect" class="form-input"></select>
+      <button class="btn btn-primary" style="margin-top:12px;" onclick="matchResume()">
+        Analyze Match
+      </button>
+    </div>
+
+    <!-- Results panel (hidden until analysis runs) -->
+    <div id="matchResult" class="match-result" style="display:none">
+
+      <div class="score-hero">
+        <div class="score-circle">
+          <svg viewBox="0 0 120 120" class="score-svg">
+            <circle cx="60" cy="60" r="50" class="score-bg"/>
+            <circle cx="60" cy="60" r="50" class="score-fill" id="scoreArc"/>
+          </svg>
+          <div class="score-number" id="scoreNumber">0%</div>
+        </div>
+        <div class="score-meta">
+          <div class="score-label" id="scoreLabel">—</div>
+          <div class="score-candidate" id="scoreCandidate">—</div>
+          <div class="score-job" id="scoreJob">—</div>
+        </div>
+      </div>
+
+      <div class="results-grid">
+        <div class="result-card">
+          <div class="result-card-title">✅ Matching Skills</div>
+          <div class="skill-cloud" id="matchingSkills"></div>
+        </div>
+        <div class="result-card">
+          <div class="result-card-title">❌ Missing Skills</div>
+          <div class="skill-cloud" id="missingSkills"></div>
+        </div>
+        <div class="result-card full-width">
+          <div class="result-card-title">💡 Extra Candidate Strengths</div>
+          <div class="skill-cloud" id="extraSkills"></div>
+        </div>
+        <div class="result-card full-width">
+          <div class="result-card-title">📝 Resume Summary</div>
+          <p id="resumeSummary" class="summary-text"></p>
+        </div>
+      </div>
+
+      <button class="btn btn-ghost" id="reportBtn" onclick="downloadReport()">
+        ⬇ Download PDF Report
+      </button>
+    </div>
+  </section>
+
+  <!-- ── SECTION: Rankings ────────────────────────────────────────────────── -->
+  <section id="sec-rank" class="section">
+    <div class="section-header">
+      <h1>Top Candidates</h1>
+      <p>Rank all uploaded resumes against the active job description at once.</p>
+    </div>
+
+    <button class="btn btn-primary" onclick="rankAll()">Run Ranking</button>
+
+    <div id="rankResults" style="margin-top:24px;"></div>
+  </section>
+
+  <!-- ── SECTION: Database ─────────────────────────────────────────────────── -->
+  <section id="sec-database" class="section">
+    <div class="section-header">
+      <h1>All Resumes</h1>
+      <p>All resumes stored in the database.</p>
+    </div>
+    <button class="btn btn-ghost" onclick="loadAllResumes()">Refresh</button>
+    <div id="allResumes" style="margin-top:20px;"></div>
+  </section>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script src="/static/js/app.js"></script>
+</body>
+</html>
