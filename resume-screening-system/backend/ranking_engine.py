@@ -68,15 +68,14 @@ def preprocess(text: str) -> str:
     return " ".join(tokens)
 
 
+from backend.skill_extractor import compare_skills
+
+
 def calculate_match_score(resume_text: str, jd_text: str) -> float:
     """
-    Calculates how well a single resume matches the job description.
-
-    Steps:
-    1. Preprocess both texts
-    2. Feed into TF-IDF vectorizer (fits on both documents together)
-    3. Compute cosine similarity
-    4. Return score as 0–100 percentage
+    Calculates how well a single resume matches the job description using a hybrid score:
+    - 50% weight on TF-IDF cosine text similarity
+    - 50% weight on Skill Coverage (matching skills / total required skills in JD)
 
     Args:
         resume_text: raw resume text
@@ -88,24 +87,32 @@ def calculate_match_score(resume_text: str, jd_text: str) -> float:
     cleaned_resume = preprocess(resume_text)
     cleaned_jd     = preprocess(jd_text)
 
-    # TF-IDF needs at least 2 documents to compute inverse frequencies
+    # 1. Text Similarity (TF-IDF Cosine Similarity)
     vectorizer = TfidfVectorizer()
     tfidf_matrix = vectorizer.fit_transform([cleaned_resume, cleaned_jd])
+    text_similarity = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])[0][0] * 100
 
-    # tfidf_matrix[0] = resume vector, tfidf_matrix[1] = JD vector
-    score = cosine_similarity(tfidf_matrix[0], tfidf_matrix[1])[0][0]
+    # 2. Skill Coverage
+    skill_result = compare_skills(resume_text, jd_text)
+    matching = skill_result["matching_skills"]
+    missing = skill_result["missing_skills"]
 
-    # Convert 0–1 cosine score to 0–100 percentage
-    return round(float(score) * 100, 2)
+    total_required = len(matching) + len(missing)
+    if total_required > 0:
+        skill_coverage = (len(matching) / total_required) * 100
+        # Hybrid score calculation
+        score = (0.50 * text_similarity) + (0.50 * skill_coverage)
+    else:
+        # Fallback to pure text similarity if JD contains no recognizable skills
+        score = text_similarity
+
+    return round(float(score), 2)
 
 
 def rank_resumes(resumes: list[dict], jd_text: str) -> list[dict]:
     """
     Scores and ranks multiple resumes against one job description.
-
-    For efficiency, we use a single TF-IDF matrix over all documents
-    instead of calling calculate_match_score() for each resume separately.
-    This is how real ATS (Applicant Tracking Systems) work at scale.
+    Uses the same hybrid score (50% TF-IDF cosine similarity + 50% skill coverage).
 
     Args:
         resumes: list of dicts, each with at least {"id": ..., "raw_text": ...}
@@ -122,7 +129,6 @@ def rank_resumes(resumes: list[dict], jd_text: str) -> list[dict]:
     cleaned_jd = preprocess(jd_text)
 
     # Build a corpus: JD first, then all resumes
-    # Index 0 = JD, Index 1..n = resumes
     corpus = [cleaned_jd] + [preprocess(r["raw_text"]) for r in resumes]
 
     vectorizer  = TfidfVectorizer()
@@ -131,12 +137,26 @@ def rank_resumes(resumes: list[dict], jd_text: str) -> list[dict]:
     jd_vector     = tfidf_matrix[0]        # JD row
     resume_matrix = tfidf_matrix[1:]       # all resume rows
 
-    # Compute similarity of every resume vs. the JD in one matrix op
+    # Compute similarity of every resume vs. the JD
     similarities = cosine_similarity(resume_matrix, jd_vector).flatten()
 
-    # Attach scores to resume dicts
+    # Attach scores to resume dicts using hybrid formula
     for i, resume in enumerate(resumes):
-        resume["match_score"] = round(float(similarities[i]) * 100, 2)
+        text_similarity = float(similarities[i]) * 100
+
+        # Calculate skill coverage
+        skill_result = compare_skills(resume["raw_text"], jd_text)
+        matching = skill_result["matching_skills"]
+        missing = skill_result["missing_skills"]
+
+        total_required = len(matching) + len(missing)
+        if total_required > 0:
+            skill_coverage = (len(matching) / total_required) * 100
+            hybrid_score = (0.50 * text_similarity) + (0.50 * skill_coverage)
+        else:
+            hybrid_score = text_similarity
+
+        resume["match_score"] = round(hybrid_score, 2)
 
     # Sort by score descending and assign rank
     resumes.sort(key=lambda x: x["match_score"], reverse=True)
