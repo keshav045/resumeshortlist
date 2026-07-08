@@ -3,32 +3,38 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>AI Resume Screener</title>
+  <title>ResumeAI — Intelligent Resume Screening</title>
+  <meta name="description" content="AI-powered resume screening system using NLP and Machine Learning to match candidates to job descriptions." />
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>" />
   <link rel="stylesheet" href="/static/css/style.css" />
 </head>
 <body>
 
-<!-- ── Sidebar ─────────────────────────────────────────────────────────────── -->
-<aside class="sidebar">
+<!-- ── Mobile Hamburger ───────────────────────────────────────────────── -->
+<button class="mobile-toggle" id="mobileToggle" onclick="toggleSidebar()" aria-label="Toggle navigation">☰</button>
+<div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
+
+<!-- ── Sidebar ─────────────────────────────────────────────────────────── -->
+<aside class="sidebar" id="sidebar" role="navigation">
   <div class="brand">
-    <span class="brand-icon">⚡</span>
+    <div class="brand-icon">⚡</div>
     <span class="brand-name">ResumeAI</span>
   </div>
 
-  <nav class="nav">
-    <a class="nav-item active" onclick="showSection('upload')">
+  <nav class="nav" aria-label="Main navigation">
+    <a class="nav-item active" onclick="showSection('upload', this)" id="nav-upload">
       <span>📄</span> Upload Resume
     </a>
-    <a class="nav-item" onclick="showSection('jd')">
+    <a class="nav-item" onclick="showSection('jd', this)" id="nav-jd">
       <span>📋</span> Job Description
     </a>
-    <a class="nav-item" onclick="showSection('match')">
+    <a class="nav-item" onclick="showSection('match', this)" id="nav-match">
       <span>🎯</span> Match & Analyze
     </a>
-    <a class="nav-item" onclick="showSection('rank')">
+    <a class="nav-item" onclick="showSection('rank', this)" id="nav-rank">
       <span>🏆</span> Rankings
     </a>
-    <a class="nav-item" onclick="showSection('database')">
+    <a class="nav-item" onclick="showSection('database', this)" id="nav-database">
       <span>🗂️</span> All Resumes
     </a>
   </nav>
@@ -36,59 +42,62 @@
   <div class="sidebar-footer">
     <label class="theme-toggle">
       <input type="checkbox" id="themeToggle" onchange="toggleTheme()" />
+      <div class="toggle-track"></div>
       <span>Light mode</span>
     </label>
   </div>
 </aside>
 
-<!-- ── Main content ─────────────────────────────────────────────────────────── -->
-<main class="main">
+<!-- ── Main Content ───────────────────────────────────────────────────── -->
+<main class="main" id="mainContent">
 
-  <!-- Header stats bar -->
+  <!-- Stats bar -->
   <div class="topbar">
     <div class="stat-pill" id="stat-total">📄 0 resumes</div>
     <div class="stat-pill" id="stat-jd">📋 No JD loaded</div>
     <div class="stat-pill" id="stat-top">🏆 Best: —</div>
   </div>
 
-  <!-- ── SECTION: Upload ──────────────────────────────────────────────────── -->
-  <section id="sec-upload" class="section active">
+  <!-- ══ SECTION: Upload ═══════════════════════════════════════════════ -->
+  <section id="sec-upload" class="section active" aria-label="Upload Resume">
     <div class="section-header">
       <h1>Upload Resume</h1>
-      <p>Upload one or more PDF resumes to begin screening.</p>
+      <p>Upload one or more PDF resumes to begin AI-powered screening and analysis.</p>
     </div>
 
-    <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()"
-         ondragover="event.preventDefault();this.classList.add('drag')"
+    <div class="upload-zone" id="uploadZone"
+         onclick="document.getElementById('fileInput').click()"
+         ondragover="event.preventDefault(); this.classList.add('drag')"
          ondragleave="this.classList.remove('drag')"
          ondrop="handleDrop(event)">
       <div class="upload-icon">📤</div>
-      <div class="upload-text">Click or drag & drop PDF resumes here</div>
-      <div class="upload-sub">Supports single or multiple PDFs</div>
-      <input type="file" id="fileInput" accept=".pdf" multiple style="display:none"
-             onchange="handleFileSelect(event)" />
+      <div class="upload-text">Click or drag & drop PDF resumes</div>
+      <div class="upload-sub">Supports single or multiple PDF files</div>
+      <input type="file" id="fileInput" accept=".pdf" multiple
+             style="display:none" onchange="handleFileSelect(event)" />
     </div>
 
     <div id="uploadQueue" class="upload-queue"></div>
     <button class="btn btn-primary" id="uploadBtn" onclick="uploadAll()" style="display:none">
-      Upload All Resumes
+      🚀 Upload All Resumes
     </button>
 
     <div id="uploadLog" class="log-panel"></div>
   </section>
 
-  <!-- ── SECTION: Job Description ─────────────────────────────────────────── -->
-  <section id="sec-jd" class="section">
+  <!-- ══ SECTION: Job Description ══════════════════════════════════════ -->
+  <section id="sec-jd" class="section" aria-label="Job Description">
     <div class="section-header">
       <h1>Job Description</h1>
-      <p>Paste the job description. All resumes will be matched against this.</p>
+      <p>Paste the job description below. All resumes will be matched and ranked against it.</p>
     </div>
 
     <div class="card">
-      <label class="form-label">Position Title</label>
-      <input type="text" id="jdTitle" class="form-input" placeholder="e.g. Senior NLP Engineer" />
+      <label class="form-label" for="jdTitle">Position Title</label>
+      <input type="text" id="jdTitle" class="form-input"
+             placeholder="e.g. Senior Python / ML Engineer" />
 
-      <label class="form-label" style="margin-top:16px;">Job Description *</label>
+      <label class="form-label" for="jdText" style="margin-top:22px;">Job Description *</label>
       <textarea id="jdText" class="form-textarea"
         placeholder="Paste the full job description here...
 
@@ -97,37 +106,36 @@ We are looking for a Python Developer with 3+ years of experience.
 Required: Python, FastAPI, PostgreSQL, Docker, REST APIs, Git.
 Nice to have: Machine Learning, TensorFlow, AWS."></textarea>
 
-      <div style="margin-top:12px; display:flex; gap:10px; align-items:center;">
-        <button class="btn btn-primary" onclick="saveJD()">Save Job Description</button>
-        <button class="btn btn-ghost" onclick="loadSampleJD()">Load sample JD</button>
+      <div style="margin-top:18px; display:flex; gap:12px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveJD()">💾 Save Description</button>
+        <button class="btn btn-ghost" onclick="loadSampleJD()">📝 Load Sample JD</button>
       </div>
       <div id="jdStatus" class="status-msg"></div>
     </div>
   </section>
 
-  <!-- ── SECTION: Match ───────────────────────────────────────────────────── -->
-  <section id="sec-match" class="section">
+  <!-- ══ SECTION: Match & Analyze ══════════════════════════════════════ -->
+  <section id="sec-match" class="section" aria-label="Match and Analyze">
     <div class="section-header">
       <h1>Match & Analyze</h1>
-      <p>Select a resume and run the NLP analysis against your job description.</p>
+      <p>Select a resume and run the NLP analysis against your active job description.</p>
     </div>
 
     <div class="card">
-      <label class="form-label">Select Resume</label>
+      <label class="form-label" for="matchSelect">Select Resume</label>
       <select id="matchSelect" class="form-input"></select>
-      <button class="btn btn-primary" style="margin-top:12px;" onclick="matchResume()">
-        Analyze Match
+      <button class="btn btn-primary" style="margin-top:16px;" onclick="matchResume()">
+        🔍 Analyze Match
       </button>
     </div>
 
     <!-- Results panel (hidden until analysis runs) -->
     <div id="matchResult" class="match-result" style="display:none">
-
       <div class="score-hero">
         <div class="score-circle">
           <svg viewBox="0 0 120 120" class="score-svg">
-            <circle cx="60" cy="60" r="50" class="score-bg"/>
-            <circle cx="60" cy="60" r="50" class="score-fill" id="scoreArc"/>
+            <circle cx="60" cy="60" r="50" class="score-bg" />
+            <circle cx="60" cy="60" r="50" class="score-fill" id="scoreArc" />
           </svg>
           <div class="score-number" id="scoreNumber">0%</div>
         </div>
@@ -158,35 +166,36 @@ Nice to have: Machine Learning, TensorFlow, AWS."></textarea>
       </div>
 
       <button class="btn btn-ghost" id="reportBtn" onclick="downloadReport()">
-        ⬇ Download PDF Report
+        📥 Download PDF Report
       </button>
     </div>
   </section>
 
-  <!-- ── SECTION: Rankings ────────────────────────────────────────────────── -->
-  <section id="sec-rank" class="section">
+  <!-- ══ SECTION: Rankings ═════════════════════════════════════════════ -->
+  <section id="sec-rank" class="section" aria-label="Rankings">
     <div class="section-header">
       <h1>Top Candidates</h1>
-      <p>Rank all uploaded resumes against the active job description at once.</p>
+      <p>Rank all uploaded resumes against the active job description in a single batch.</p>
     </div>
 
-    <button class="btn btn-primary" onclick="rankAll()">Run Ranking</button>
-
-    <div id="rankResults" style="margin-top:24px;"></div>
+    <button class="btn btn-primary" onclick="rankAll()">🏆 Run Ranking</button>
+    <div id="rankResults" style="margin-top:28px;"></div>
   </section>
 
-  <!-- ── SECTION: Database ─────────────────────────────────────────────────── -->
-  <section id="sec-database" class="section">
+  <!-- ══ SECTION: All Resumes (Database) ═══════════════════════════════ -->
+  <section id="sec-database" class="section" aria-label="All Resumes">
     <div class="section-header">
       <h1>All Resumes</h1>
-      <p>All resumes stored in the database.</p>
+      <p>Every resume stored in the database. Manage and delete uploads here.</p>
     </div>
-    <button class="btn btn-ghost" onclick="loadAllResumes()">Refresh</button>
-    <div id="allResumes" style="margin-top:20px;"></div>
+
+    <button class="btn btn-ghost" onclick="loadAllResumes()">🔄 Refresh</button>
+    <div id="allResumes" style="margin-top:24px;"></div>
   </section>
 
 </main>
 
+<!-- Toast notification -->
 <div class="toast" id="toast"></div>
 
 <script src="/static/js/app.js"></script>

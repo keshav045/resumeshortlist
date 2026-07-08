@@ -18,6 +18,7 @@ API Endpoints:
 
 import os
 import shutil
+from pathlib import Path
 from typing import Optional
 
 from fastapi import FastAPI, File, UploadFile, Depends, HTTPException, Form
@@ -32,6 +33,17 @@ from backend.resume_parser import extract_text_from_pdf, extract_candidate_name
 from backend.skill_extractor import compare_skills
 from backend.ranking_engine import calculate_match_score, rank_resumes, generate_summary
 from backend.report_generator import generate_pdf_report
+
+# ── Path resolution ────────────────────────────────────────────────────────────
+# All paths are resolved relative to this file so the server works
+# regardless of where `uvicorn` is launched from.
+BASE_DIR = Path(__file__).resolve().parent.parent          # resume-screening-system/
+FRONTEND_DIR = BASE_DIR / "frontend"
+STATIC_DIR = FRONTEND_DIR / "static"
+UPLOAD_DIR = BASE_DIR / "dataset" / "uploads"
+
+# Ensure required directories exist
+UPLOAD_DIR.mkdir(parents=True, exist_ok=True)
 
 # ── App setup ──────────────────────────────────────────────────────────────────
 app = FastAPI(
@@ -50,14 +62,10 @@ app.add_middleware(
 )
 
 # Serve the frontend HTML/CSS/JS as static files
-app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
+app.mount("/static", StaticFiles(directory=str(STATIC_DIR)), name="static")
 
 # Create DB tables on startup (safe to call repeatedly)
 Base.metadata.create_all(bind=engine)
-
-# Temp folder for uploaded PDFs
-UPLOAD_DIR = "dataset/uploads"
-os.makedirs(UPLOAD_DIR, exist_ok=True)
 
 # Active job description stored in memory (resets on server restart)
 # In production, store this in the database instead
@@ -69,7 +77,7 @@ active_job_description: dict = {"text": "", "title": ""}
 @app.get("/")
 async def root():
     """Serve the dashboard HTML page."""
-    return FileResponse("frontend/index.html")
+    return FileResponse(str(FRONTEND_DIR / "index.html"))
 
 
 @app.post("/upload-resume")
@@ -89,12 +97,12 @@ async def upload_resume(
         raise HTTPException(status_code=400, detail="Only PDF files are accepted.")
 
     # Save uploaded file to disk
-    file_path = os.path.join(UPLOAD_DIR, file.filename)
+    file_path = UPLOAD_DIR / file.filename
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
 
     # Extract text from the PDF
-    raw_text = extract_text_from_pdf(file_path)
+    raw_text = extract_text_from_pdf(str(file_path))
     if not raw_text:
         raise HTTPException(status_code=422, detail="Could not extract text from PDF.")
 
@@ -304,9 +312,9 @@ async def delete_resume(resume_id: int, db: Session = Depends(get_db)):
         raise HTTPException(status_code=404, detail="Resume not found.")
 
     # Also delete the uploaded file
-    file_path = os.path.join(UPLOAD_DIR, resume.filename)
-    if os.path.exists(file_path):
-        os.remove(file_path)
+    file_path = UPLOAD_DIR / resume.filename
+    if file_path.exists():
+        file_path.unlink()
 
     db.delete(resume)
     db.commit()

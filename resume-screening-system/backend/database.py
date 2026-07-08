@@ -5,12 +5,15 @@ Sets up the SQLite database using SQLAlchemy ORM.
 All uploaded resumes and their analysis results are stored here.
 """
 
+from pathlib import Path
 from sqlalchemy import create_engine
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import sessionmaker, declarative_base
 
-# SQLite database file will be created in the project root
-DATABASE_URL = "sqlite:///./resume_screening.db"
+# Resolve the project root (one level up from /backend/)
+PROJECT_ROOT = Path(__file__).resolve().parent.parent
+
+# SQLite database file is stored in the project root
+DATABASE_URL = f"sqlite:///{PROJECT_ROOT / 'resume_screening.db'}"
 
 # Create the database engine
 # check_same_thread=False is needed for SQLite with FastAPI (multiple threads)
