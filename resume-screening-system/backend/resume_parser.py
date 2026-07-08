@@ -40,43 +40,63 @@ def extract_text_from_pdf(file_path: str) -> str:
 
 def clean_text(text: str) -> str:
     """
-    Removes noise from extracted PDF text.
-
-    Steps:
-    1. Replace multiple whitespace/newlines with a single space
-    2. Remove non-ASCII characters (accented chars, symbols)
-    3. Strip leading/trailing whitespace
+    Removes noise from extracted PDF text while preserving lines/newlines.
     """
-    # Collapse all whitespace (tabs, newlines, double spaces)
-    text = re.sub(r'\s+', ' ', text)
-
     # Remove characters outside standard ASCII range
     text = re.sub(r'[^\x00-\x7F]+', ' ', text)
 
-    return text.strip()
+    # Replace multiple horizontal spaces (but not newlines) with a single space
+    text = re.sub(r'[ \t\r\f\v]+', ' ', text)
+
+    # Replace multiple newlines with a single newline
+    text = re.sub(r'\n+', '\n', text)
+
+    # Strip whitespace from each line and remove empty lines
+    lines = [line.strip() for line in text.split('\n') if line.strip()]
+
+    return '\n'.join(lines)
 
 
 def extract_candidate_name(text: str) -> str:
     """
     Tries to guess the candidate's name from the top of the resume.
 
-    Strategy: The first line that looks like "Firstname Lastname"
-    (two or more capitalized words, no numbers) is taken as the name.
-
-    This is a heuristic — it won't be perfect for every resume format.
-
-    Args:
-        text: full resume text
-
-    Returns:
-        Guessed name string, or "Unknown" if none found
+    Strategy:
+    - Look for capitalized or UPPERCASE words at the top of the resume.
+    - Exclude common resume section titles or words (e.g. Resume, CV).
+    - If no exact pattern matches, fallback to the first non-empty line
+      if it looks reasonable (short, no digits, no emails).
     """
-    lines = text.strip().split("\n")
+    lines = [line.strip() for line in text.split("\n") if line.strip()]
+    if not lines:
+        return "Unknown"
 
-    for line in lines[:10]:   # only look at the first 10 lines
-        line = line.strip()
-        # Match 2-4 words that start with a capital letter, no digits
-        if re.match(r'^[A-Z][a-z]+([\s][A-Z][a-z]+){1,3}$', line):
-            return line
+    # Match 2 to 4 words starting with a capital letter or all caps
+    name_pattern = re.compile(r'^[A-Z][A-Za-z\.]*(?:\s+[A-Z][A-Za-z\.]*){1,3}$')
+
+    for line in lines[:10]:
+        # Clean line from common separators like commas, pipes, or bullets
+        clean_line = re.sub(r'[,|•]', ' ', line).strip()
+        clean_line = re.sub(r'\s+', ' ', clean_line)
+
+        if name_pattern.match(clean_line):
+            lower_line = clean_line.lower()
+            ignore_words = {"resume", "cv", "curriculum", "vitae", "summary", "profile", "contact", "email", "phone", "page"}
+            if not any(word in lower_line for word in ignore_words) and not any(c.isdigit() for c in clean_line):
+                return clean_line
+
+    # Fallback: check if the first line is suitable as a candidate name
+    first_line = lines[0]
+    clean_first = re.sub(r'[,|•]', ' ', first_line).strip()
+    clean_first = re.sub(r'\s+', ' ', clean_first)
+    lower_first = clean_first.lower()
+    ignore_words = {"resume", "cv", "curriculum", "vitae", "summary", "profile", "contact", "email", "phone", "page"}
+
+    if (len(clean_first.split()) <= 4 and
+        not any(c.isdigit() for c in clean_first) and
+        "@" not in clean_first and
+        ":" not in clean_first and
+        not any(word in lower_first for word in ignore_words)):
+        return clean_first
 
     return "Unknown"

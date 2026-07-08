@@ -707,6 +707,7 @@ select.form-input {
 .summary-text {
   color: var(--text-2);
   font-size: 14px; line-height: 1.85;
+  white-space: pre-line;
 }
 
 /* ════════════════════════════════════════════════════════════════════

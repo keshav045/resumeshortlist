@@ -109,7 +109,8 @@ def generate_pdf_report(resume, job_title: str) -> str:
 
     # Resume summary
     content.append(Paragraph("Resume Summary", heading_style))
-    content.append(Paragraph(resume.summary or "No summary available.", body_style))
+    summary_html = (resume.summary or "No summary available.").replace("\n", "<br/>")
+    content.append(Paragraph(summary_html, body_style))
 
     # Matching skills
     content.append(Paragraph("Matching Skills", heading_style))

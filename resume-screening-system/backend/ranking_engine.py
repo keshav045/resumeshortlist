@@ -161,14 +161,24 @@ def generate_summary(text: str, max_sentences: int = 3) -> str:
         max_sentences: how many sentences to include in the summary
 
     Returns:
-        Summary string
+        Summary string formatted as a bulleted list
     """
-    # Split into sentences (rough split on period/exclamation/question)
-    sentences = re.split(r'(?<=[.!?])\s+', text)
-    sentences = [s.strip() for s in sentences if len(s.strip()) > 20]
+    # Split into sentences (rough split on period/exclamation/question or newline)
+    # Since raw text now contains newlines, we can split on both newlines and sentence boundaries
+    raw_sentences = re.split(r'(?<=[.!?])\s+|\n', text)
+    sentences = []
+    for s in raw_sentences:
+        s_clean = s.strip()
+        # Clean leading bullet symbols if any exist in raw text
+        s_clean = re.sub(r'^[•\-\*]\s*', '', s_clean).strip()
+        if len(s_clean) > 20:
+            sentences.append(s_clean)
 
     if not sentences:
-        return text[:300]   # fallback: just return the first 300 chars
+        fallback_text = text[:300].strip()
+        if fallback_text:
+            return f"• {fallback_text}..."
+        return ""
 
     # Score each sentence: count meaningful (non-stopword) words
     def sentence_score(sentence: str) -> int:
@@ -184,4 +194,6 @@ def generate_summary(text: str, max_sentences: int = 3) -> str:
     top_sentences = [s for s, _ in top]
     ordered = [s for s in sentences if s in top_sentences]
 
-    return " ".join(ordered)
+    # Format as bulleted list separated by newlines
+    bullet_points = [f"• {s}" for s in ordered]
+    return "\n".join(bullet_points)
