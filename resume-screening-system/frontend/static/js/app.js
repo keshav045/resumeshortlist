@@ -88,7 +88,7 @@ function handleDrop(event) {
     f.name.toLowerCase().endsWith('.pdf')
   );
   if (files.length === 0) {
-    toast('⚠️ Only PDF files are accepted');
+    toast('Only PDF files are accepted');
     return;
   }
   addToQueue(files);
@@ -109,7 +109,9 @@ function renderQueue() {
 
   container.innerHTML = pendingFiles.map((f, i) => `
     <div class="queue-item" style="animation-delay: ${i * 0.05}s">
-      <span class="q-icon">📄</span>
+      <span class="q-icon">
+        <svg viewBox="0 0 24 24" width="16" height="16" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="vertical-align: middle;"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>
+      </span>
       <span class="q-name">${escapeHtml(f.name)}</span>
       <span class="q-size">${formatFileSize(f.size)}</span>
       <span class="q-remove" onclick="removeFromQueue(${i})" title="Remove">✕</span>
@@ -131,10 +133,10 @@ async function uploadAll() {
   const btn = document.getElementById('uploadBtn');
   log.innerHTML = '';
   btn.disabled = true;
-  btn.textContent = '⏳ Uploading…';
+  btn.textContent = 'Uploading…';
 
   for (const file of pendingFiles) {
-    addLog(`⏳ Uploading ${file.name}…`, 'info', log);
+    addLog(`Uploading ${file.name}…`, 'info', log);
 
     const formData = new FormData();
     formData.append('file', file);
@@ -156,9 +158,9 @@ async function uploadAll() {
   pendingFiles = [];
   renderQueue();
   updateStats();
-  toast('✅ All uploads complete');
+  toast('All uploads complete');
   btn.disabled = false;
-  btn.textContent = '🚀 Upload All Resumes';
+  btn.textContent = 'Upload All Resumes';
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -170,7 +172,7 @@ async function saveJD() {
   const status = document.getElementById('jdStatus');
 
   if (text.trim().length < 50) {
-    status.textContent = '⚠️ Job description is too short. Add more detail (50+ characters).';
+    status.textContent = 'Job description is too short. Add more detail (50+ characters).';
     status.className = 'status-msg err';
     return;
   }
@@ -186,8 +188,8 @@ async function saveJD() {
     if (res.ok) {
       status.textContent = `✓ Saved "${data.title}" (${data.word_count} words)`;
       status.className   = 'status-msg ok';
-      document.getElementById('stat-jd').textContent = `📋 ${data.title}`;
-      toast('✅ Job description saved');
+      document.getElementById('stat-jd-text').textContent = data.title;
+      toast('Job description saved');
     } else {
       status.textContent = `✗ ${data.detail}`;
       status.className   = 'status-msg err';
@@ -218,7 +220,7 @@ Nice to have:
 
 You will build and maintain ML pipelines, design REST APIs, and collaborate with cross-functional teams.`;
 
-  toast('📝 Sample JD loaded — click Save to apply');
+  toast('Sample JD loaded — click Save to apply');
 }
 
 // ══════════════════════════════════════════════════════════════════════
@@ -247,7 +249,7 @@ async function loadResumeSelect() {
 async function matchResume() {
   const id = document.getElementById('matchSelect').value;
   if (!id) {
-    toast('⚠️ Select a resume first');
+    toast('Select a resume first');
     return;
   }
 
@@ -257,22 +259,22 @@ async function matchResume() {
   const formData = new FormData();
   formData.append('resume_id', id);
 
-  toast('🔍 Analyzing resume…');
+  toast('Analyzing resume…');
 
   try {
     const res  = await fetch(`${API}/match-resume`, { method: 'POST', body: formData });
     const data = await res.json();
 
     if (!res.ok) {
-      toast(`❌ ${data.detail}`);
+      toast(data.detail);
       return;
     }
 
     currentResumeId = id;
     renderMatchResult(data);
-    toast('✅ Analysis complete');
+    toast('Analysis complete');
   } catch (e) {
-    toast('❌ Network error — is the server running?');
+    toast('Network error — is the server running?');
   }
 }
 
@@ -305,17 +307,20 @@ function renderMatchResult(data) {
   animateCounter('scoreNumber', 0, score, 1200, '%');
 
   // Meta information
-  document.getElementById('scoreCandidate').textContent = `👤 ${data.candidate_name}`;
-  document.getElementById('scoreJob').textContent = `💼 ${data.job_title || 'Job Description'}`;
+  document.getElementById('scoreCandidate').textContent = data.candidate_name;
+  document.getElementById('scoreJob').textContent = data.job_title || 'Job Description';
 
   // Score label
-  let label, labelColor;
+  let label;
   if (score >= 70) {
-    label = '🟢 Strong Match';
+    label = 'Strong Match';
+    document.getElementById('scoreLabel').style.color = 'var(--green)';
   } else if (score >= 40) {
-    label = '🟡 Partial Match';
+    label = 'Partial Match';
+    document.getElementById('scoreLabel').style.color = 'var(--amber)';
   } else {
-    label = '🔴 Weak Match';
+    label = 'Weak Match';
+    document.getElementById('scoreLabel').style.color = 'var(--red)';
   }
   document.getElementById('scoreLabel').textContent = label;
 
@@ -346,7 +351,7 @@ function renderSkillCloud(elementId, skills, cssClass) {
 
 async function downloadReport() {
   if (!currentResumeId) return;
-  toast('📥 Generating PDF report…');
+  toast('Generating PDF report…');
   window.open(`${API}/report/${currentResumeId}`, '_blank');
 }
 
@@ -366,7 +371,7 @@ async function rankAll() {
     const data = await res.json();
 
     if (!res.ok) {
-      container.innerHTML = `<p style="color:var(--red);font-weight:500;">❌ ${data.detail}</p>`;
+      container.innerHTML = `<p style="color:var(--red);font-weight:500;">${data.detail}</p>`;
       return;
     }
 
@@ -417,13 +422,13 @@ async function rankAll() {
       </table>`;
 
     // Update top stat
-    document.getElementById('stat-top').textContent =
-      `🏆 Best: ${data.rankings[0].match_score.toFixed(1)}%`;
+    document.getElementById('stat-top-text').textContent =
+      `Best: ${data.rankings[0].match_score.toFixed(1)}%`;
 
     updateStats();
-    toast('✅ Ranking complete');
+    toast('Ranking complete');
   } catch (e) {
-    container.innerHTML = `<p style="color:var(--red);font-weight:500;">❌ Network error — is the server running?</p>`;
+    container.innerHTML = `<p style="color:var(--red);font-weight:500;">Network error — is the server running?</p>`;
   }
 }
 
@@ -477,7 +482,7 @@ async function loadAllResumes() {
               </td>
               <td>
                 <button class="btn btn-danger" onclick="deleteResume(${r.id})">
-                  🗑 Delete
+                  <svg viewBox="0 0 24 24" width="14" height="14" stroke="currentColor" stroke-width="2" fill="none" stroke-linecap="round" stroke-linejoin="round" style="margin-right: 4px; vertical-align: middle;"><polyline points="3 6 5 6 21 6"></polyline><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg> Delete
                 </button>
               </td>
             </tr>
@@ -485,7 +490,7 @@ async function loadAllResumes() {
         </tbody>
       </table>`;
   } catch (e) {
-    container.innerHTML = `<p style="color:var(--red);font-weight:500;">❌ Error loading resumes.</p>`;
+    container.innerHTML = `<p style="color:var(--red);font-weight:500;">Error loading resumes.</p>`;
   }
 }
 
@@ -502,11 +507,11 @@ async function deleteResume(id) {
         row.style.transform = 'translateX(20px)';
         setTimeout(() => row.remove(), 300);
       }
-      toast('🗑 Resume deleted');
+      toast('Resume deleted');
       updateStats();
     }
   } catch (e) {
-    toast('❌ Error deleting resume');
+    toast('Error deleting resume');
   }
 }
 
@@ -518,8 +523,8 @@ async function updateStats() {
     const res  = await fetch(`${API}/resumes`);
     const data = await res.json();
     const count = data.length;
-    document.getElementById('stat-total').textContent =
-      `📄 ${count} resume${count !== 1 ? 's' : ''}`;
+    document.getElementById('stat-total-text').textContent =
+      `${count} resume${count !== 1 ? 's' : ''}`;
   } catch {
     // silently fail
   }

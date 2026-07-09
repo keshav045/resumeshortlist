@@ -190,7 +190,7 @@ body::before {
   font-weight: 600;
 }
 .nav-item.active::before { transform: scaleY(1); }
-.nav-item span { font-size: 18px; flex-shrink: 0; }
+.nav-item span { font-size: 18px; flex-shrink: 0; display: inline-flex; align-items: center; justify-content: center; }
 
 /* Sidebar Footer */
 .sidebar-footer {
@@ -296,6 +296,9 @@ body::before {
   color: var(--text-2);
   transition: all 0.2s;
   white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
 }
 .stat-pill:hover {
   border-color: var(--border-hover);
